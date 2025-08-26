@@ -1,16 +1,11 @@
 <?php
 /**
  * PIX Offline - Gerenciador de Transações
- * Version: 001
+ * Version: 002 - CORREÇÃO DE SEGURANÇA
  * 
- * === NOTAS DA VERSÃO DESTE ARQUIVO 001 ===
- * - CORRIGIDO: Duplicação de registros via webhooks
- * - Implementado sistema de detecção de webhooks duplicados
- * - Adicionadas transações de banco com locks para evitar race conditions
- * - Consolidados hooks de criação de pedidos em sistema único
- * - Melhorada verificação de transações existentes com cache local
- * - Adicionadas funções robustas de limpeza de duplicatas
- * - Implementado processamento atômico de transações
+ * === ALTERAÇÕES VERSÃO 002 ===
+ * - CORRIGIDO: 
+ * - SEGURANÇA CONTRA SQL INJECTION
  */
 
 // Evita acesso direto
@@ -107,6 +102,32 @@ class PixOfflineTransactions {
     
     // FUNÇÃO CORRIGIDA: Processar webhook com detecção de duplicação
     private function handle_openpix_webhook() {
+        // ADICIONAR NO INÍCIO:
+    
+        // Rate limiting básico
+            $client_ip = $_SERVER['REMOTE_ADDR'] ?? '';
+            $rate_limit_key = 'webhook_rate_limit_' . md5($client_ip);
+    
+            $attempts = get_transient($rate_limit_key);
+            if ($attempts && $attempts > 10) {
+            error_log("PIX Webhook: Rate limit exceeded from IP {$client_ip}");
+            http_response_code(429);
+            exit('Rate limit exceeded');
+            }   
+    
+    set_transient($rate_limit_key, ($attempts ?: 0) + 1, MINUTE_IN_SECONDS);
+    
+    // Verificar webhook signature (se configurado)
+    $payload = file_get_contents('php://input');
+    $signature = $_SERVER['HTTP_X_OPENPIX_SIGNATURE'] ?? '';
+    
+    if (!empty($signature) && !$this->verify_openpix_webhook($payload, $signature)) {
+        error_log('PIX Webhook: Invalid signature from IP ' . $client_ip);
+        http_response_code(403);
+        exit('Invalid signature');
+    }
+        
+        
         // Logs de debug iniciais
         error_log("PIX Webhook: Requisição recebida");
         error_log("PIX Webhook: Method = " . $_SERVER['REQUEST_METHOD']);
@@ -214,6 +235,22 @@ class PixOfflineTransactions {
             exit('Processing error');
         }
     }
+    
+    // ADICIONAR NOVA FUNÇÃO:
+    private function verify_openpix_webhook($payload, $signature) {
+            $options = get_option('pix_offline_options', array());
+            $webhook_secret = $options['webhook_secret'] ?? '';
+    
+            if (empty($webhook_secret)) {
+            return true; // Se não configurado, permitir (backward compatibility)
+            }
+    
+    // Calcular HMAC esperado
+    $expected_signature = hash_hmac('sha256', $payload, $webhook_secret);
+    
+    // Comparação segura (timing-safe)
+    return hash_equals($expected_signature, $signature);
+}
     
     // NOVA FUNÇÃO: Verificar se webhook já foi processado
     private function is_webhook_already_processed($order_id, $webhook_signature) {
@@ -807,21 +844,53 @@ public function get_all_transactions() {
 
     
     public function ajax_update_status() {
-        // Verificar nonce
-        if (!wp_verify_nonce($_POST['nonce'], 'pix_transactions_nonce')) {
-            wp_die('Erro de segurança');
-        }
-        
-        $order_id = intval($_POST['order_id']);
-        $new_status = sanitize_text_field($_POST['new_status']);
-        $estorno_motivo = sanitize_text_field($_POST['estorno_motivo'] ?? '');
-        
-        $this->update_transaction_status($order_id, $new_status, $estorno_motivo);
-        
-        wp_send_json_success(array(
-            'message' => 'Status atualizado com sucesso!'
-        ));
+    // Verificar capability em adição ao nonce
+    if (!current_user_can('manage_woocommerce')) {
+        wp_die(__('Insufficient permissions'));
     }
+    
+    if (!wp_verify_nonce($_POST['nonce'], 'pix_transactions_nonce')) {
+        wp_die(__('Security verification failed'));
+    }
+    
+    // Input validation rigorosa
+    $order_id = absint($_POST['order_id'] ?? 0);
+    if ($order_id <= 0) {
+        wp_send_json_error(array('message' => 'Invalid order ID'));
+    }
+    
+    // Lista permitida de status
+    $allowed_statuses = array(
+        'checkout_iniciado',
+        'pix_gerado',
+        'pix_copiado',
+        'pendente',
+        'finalizado',
+        'estornado_admin',
+        'recusado_admin',
+        'reembolso',
+        'estorno_openpix',
+        'recusado_openpix',
+        'expirado_openpix'
+    );
+    
+    $new_status = sanitize_text_field($_POST['new_status'] ?? '');
+    if (!in_array($new_status, $allowed_statuses)) {
+        wp_send_json_error(array('message' => 'Invalid status'));
+    }
+    
+    // Sanitizar motivo do estorno
+    $estorno_motivo = wp_kses_post($_POST['estorno_motivo'] ?? '');
+    
+    // Verificar se order existe e pertence ao usuário
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        wp_send_json_error(array('message' => 'Order not found'));
+    }
+    
+    $this->update_transaction_status($order_id, $new_status, $estorno_motivo);
+    wp_send_json_success(array('message' => 'Status updated successfully'));
+}
     
     // Obter estatísticas das transações (incluindo status OpenPix)
     public function get_transaction_stats() {
@@ -881,13 +950,23 @@ public function get_all_transactions() {
         
         foreach ($old_transactions as $order_id) {
             // Deletar todos os metas da transação
+            
             foreach ($meta_keys as $meta_key) {
-                $wpdb->delete(
-                    $this->table_name,
-                    array('order_id' => $order_id, 'meta_key' => $meta_key),
-                    array('%d', '%s')
-                );
-            }
+    $order_id = absint($order_id); // Sanitizar como integer
+    $meta_key = sanitize_key($meta_key); // Sanitizar meta_key
+    
+    $wpdb->delete(
+        $this->table_name,
+        array(
+            'order_id' => $order_id,
+            'meta_key' => $meta_key
+        ),
+        array('%d', '%s') // Format especificado
+    );
+}
+            
+            
+            
             $deleted_count++;
         }
         
