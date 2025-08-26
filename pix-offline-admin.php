@@ -3,13 +3,8 @@
  * PIX Offline - Painel Administrativo
  * Version: 001
  * 
- * === NOTAS DA VERSÃO DESTE ARQUIVO 001 ===
- * - Adicionados campos para webhook OpenPix na seção PIX Dinâmico
- * - Nova coluna "Status OpenPix" na tabela de transações
- * - Implementados novos status internos: reembolso, estorno_openpix, recusado_openpix, expirado_openpix
- * - Adicionados novos motivos: "Reembolso", "Falha no pagamento", "Timeout"
- * - CSS para novos status OpenPix e status internos
- * - Campos condicionais para configuração de webhook
+ * === ALTERAÇÕES VERSÃO 002 ===
+ * - SEGURANÇA CONTRA SQL INJECTION
  */
 
 // Evita acesso direto
@@ -787,6 +782,8 @@ class PixOfflineAdmin {
         echo '<p class="description">Mensagem exibida quando a API da OpenPix falha ou retorna erro.</p>';
     }
     
+    
+    
     // NOVOS CAMPOS WEBHOOK
     public function enable_webhook_field() {
         $value = $this->get_option('enable_webhook', '0');
@@ -1037,9 +1034,25 @@ class PixOfflineAdmin {
             wp_die('Erro de segurança');
         }
         
-        $bulk_action = sanitize_text_field($_POST['bulk_action']);
-        $order_ids = array_map('intval', $_POST['order_ids']);
-        $motivo = sanitize_text_field($_POST['motivo'] ?? '');
+        // Verificar capability
+        if (!current_user_can('manage_woocommerce')) {
+            wp_die(__('Insufficient permissions'));
+        }
+        
+        $bulk_action = sanitize_text_field($_POST['bulk_action'] ?? '');
+        $order_ids = array_map('absint', (array) ($_POST['order_ids'] ?? array()));
+        $motivo = wp_kses_post($_POST['motivo'] ?? '');
+        
+        // Validar ação
+        $allowed_actions = array('finalizar', 'estornar', 'recusar', 'delete');
+        if (!in_array($bulk_action, $allowed_actions)) {
+            wp_send_json_error(array('message' => 'Invalid action'));
+        }
+        
+        // Filtrar IDs válidos
+        $order_ids = array_filter($order_ids, function($id) {
+            return $id > 0 && wc_get_order($id) !== false;
+        });
         
         if (empty($order_ids)) {
             wp_send_json_error(array('message' => 'Nenhuma transação selecionada'));
