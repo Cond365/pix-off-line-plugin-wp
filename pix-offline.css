@@ -1,0 +1,346 @@
+/* PIX Offline Plugin Styles
+ * Version: 001
+ * 
+ * === NOTAS DA VERSÃO DESTE ARQUIVO 001 ===
+ * - Popup "PIX copiado" redesigned com cores do tema principal
+ * - Removidos estilos do ícone ✅ antigo
+ * - Aplicadas cores #32BCAD/#28a99a consistentes
+ * - Melhoradas animações e transições
+ * - Popup integrado ao design principal do modal PIX
+ * - Mantidos todos estilos existentes para compatibilidade
+ */
+
+.pix-btn {
+    background-color: #32BCAD;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.pix-btn:hover {
+    background-color: #28a99a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.pix-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn { from {opacity: 0;} to {opacity: 1;} }
+
+/* Centralização estrutural do conteúdo do popup */
+.pix-modal-content {
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 30px;
+    border: none;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 450px;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    animation: slideIn 0.3s;
+
+    /* centraliza tudo dentro do modal */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+/* faz os filhos ocuparem a largura do cartão, mantendo a centralização visual */
+.pix-modal-content > *:not(.pix-close) {
+    width: 100%;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-50px); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+}
+
+.pix-close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.pix-close:hover,
+.pix-close:focus { color: #333; text-decoration: none; }
+
+.pix-modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 25px;
+    color: #333;
+    font-size: 24px;
+}
+
+/* Garante centralização dos blocos internos */
+.pix-qr,
+.pix-info,
+.pix-copy-paste {
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.pix-info {
+    margin-bottom: 30px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #32BCAD;
+}
+
+.pix-info p { margin: 10px 0; font-size: 16px; line-height: 1.5; }
+
+.pix-info p:last-child { margin-bottom: 0; font-style: italic; color: #666; }
+
+/* textarea centralizado no layout, mas texto interno segue alinhado à esquerda (melhor leitura) */
+.pix-copy-paste textarea {
+    display: block;
+    margin: 0 auto;
+    width: 100%;
+    text-align: left;
+}
+
+.pix-confirm-btn {
+    width: 100%;
+    background-color: #32BCAD;
+    color: white;
+    border: none;
+    padding: 15px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.pix-confirm-btn:hover { background-color: #28a99a; transform: translateY(-1px); }
+.pix-confirm-btn:active { transform: translateY(0); }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pix-modal-content { margin: 5% auto; width: 95%; padding: 20px; }
+    .pix-btn { width: 100%; padding: 12px 20px; }
+}
+
+/* Loading state */
+.pix-btn:disabled,
+.pix-confirm-btn:disabled { background-color: #ccc; cursor: not-allowed; transform: none; }
+
+.pix-btn:disabled:hover,
+.pix-confirm-btn:disabled:hover { background-color: #ccc; transform: none; }
+
+/* POPUP "PIX COPIADO" REDESIGNED - VERSÃO 1.0.2 */
+#pix-alert-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.6);
+    z-index: 100000;
+    backdrop-filter: blur(3px);
+}
+
+#pix-alert-box {
+    background: #fff;
+    border-radius: 12px;
+    padding: 35px 30px;
+    width: 90%;
+    max-width: 360px;
+    text-align: center;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+    border-top: 4px solid #32BCAD;
+    position: relative;
+    animation: pixAlertIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+#pix-alert-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #32BCAD;
+    margin-bottom: 15px;
+    letter-spacing: 0.5px;
+}
+
+#pix-alert-msg {
+    font-size: 15px;
+    color: #555;
+    margin-bottom: 25px;
+    line-height: 1.4;
+}
+
+#pix-alert-ok {
+    background: #32BCAD;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 30px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    min-width: 100px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(50, 188, 173, 0.3);
+}
+
+#pix-alert-ok:hover {
+    background: #28a99a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(50, 188, 173, 0.4);
+}
+
+#pix-alert-ok:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(50, 188, 173, 0.3);
+}
+
+#pix-alert-ok:focus {
+    outline: 2px solid #32BCAD;
+    outline-offset: 2px;
+}
+
+/* Animações do popup */
+@keyframes pixAlertIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes pixAlertOut {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+}
+
+/* Responsividade do popup */
+@media (max-width: 480px) {
+    #pix-alert-box {
+        padding: 25px 20px;
+        margin: 20px;
+        max-width: calc(100% - 40px);
+    }
+    
+    #pix-alert-title {
+        font-size: 16px;
+        margin-bottom: 12px;
+    }
+    
+    #pix-alert-msg {
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
+    
+    #pix-alert-ok {
+        padding: 10px 25px;
+        font-size: 13px;
+    }
+}
+
+/* Estados adicionais para melhor UX */
+#pix-alert-box::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, #32BCAD, #28a99a);
+    border-radius: 14px;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#pix-alert-box:hover::before {
+    opacity: 0.1;
+}
+
+/* Melhorias de acessibilidade */
+#pix-alert-box[role="dialog"] {
+    position: relative;
+}
+
+#pix-alert-box[aria-live="assertive"] #pix-alert-msg {
+    color: #333;
+}
+
+/* Prevenção de interação com elementos de fundo */
+body.pix-alert-open {
+    overflow: hidden;
+}
+
+/* Compatibilidade com temas escuros */
+@media (prefers-color-scheme: dark) {
+    #pix-alert-box {
+        background: #2d3748;
+        color: #e2e8f0;
+        border-top-color: #32BCAD;
+    }
+    
+    #pix-alert-title {
+        color: #32BCAD;
+    }
+    
+    #pix-alert-msg {
+        color: #a0aec0;
+    }
+}
+
+/* Transições suaves para todos os elementos do plugin */
+.pix-btn,
+.pix-confirm-btn,
+.pix-modal-content,
+#pix-alert-box,
+#pix-alert-ok {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Melhorias para dispositivos touch */
+@media (hover: none) {
+    .pix-btn:hover,
+    .pix-confirm-btn:hover,
+    #pix-alert-ok:hover {
+        transform: none;
+    }
+    
+    .pix-btn:active,
+    .pix-confirm-btn:active,
+    #pix-alert-ok:active {
+        transform: scale(0.98);
+    }
+}
